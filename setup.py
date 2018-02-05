@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='wpcraft',
-    version='1.0',
+    version='1.0.1',
     description='A CLI for fetching wallpapers from WallpapersCraft',
 
     url='',
@@ -22,6 +22,7 @@ setup(
     ],
     keywords='cli wallpaper desktop',
 
+    python_requires='>=3.6',
     install_requires=['python-crontab>=2.2'],
 
     packages=find_packages(),
