@@ -1,19 +1,14 @@
 wpcraft
 ===
 
-A simple CLI for automatically fetching wallpapers specificaly from https://wallpaperscraft.com/
-
-Published under the terms of the GNU General Public License version 3, see full text in LICENSE.txt.
-(c) Rafał Cieślak 2017-2018
-
-About
-===
-
 This tool automatically downloads images from https://wallpaperscraft.com/ . The user can choose an image catalog or tag, and `wpcraft` will randomly pick images that match these settings, download the image in the right resolution, and set their desktop wallpaper to the new image.
 
 Wallpapers can be marked as "liked", you can instruct `wpcraft` to only pick wallpapers from the "liked" set.
 
 You can also configure `wpcraft` to automatically switch wallpapers e.g. every 6 hours.
+
+Published under the terms of the GNU General Public License version 3, see full text in LICENSE.txt.
+(c) Rafał Cieślak 2017-2018
 
 Installation
 ===
@@ -25,7 +20,7 @@ sudo pip3 install wpcraft
 Usage
 ===
 
-Switch to next, randomly selected wallpaper:
+Switch to another randomly selected wallpaper:
 
 ```
 $ wpcraft next
