@@ -13,8 +13,8 @@ from typing import Dict, Any, Optional, List, Set
 
 from crontab import CronTab
 
-import wpcraftaccess as wpa
-import utils
+from .wpcraftaccess import wpcraftaccess as wpa
+from .utils import utils
 
 CONFIG_FILE_PATH = (os.getenv("WPCRAFT_CONFIG") or
                     "~/.local/share/wpcraft/config.yml")
@@ -360,10 +360,12 @@ class WPCraft:
             cron.remove_all(comment=CRONTAB_COMMENT)
         self.state["auto"] = None
 
+    # TODO: Do not rely on cron timing. Instead, save the "last-changed"
+    # timestamp, and call cron every minute with a special command that
+    # switches wallpaper only if now-timestamp>threshold.
     def cmd_auto_hours(self, args) -> None:
         with user_crontab() as cron:
             cron.remove_all(comment=CRONTAB_COMMENT)
-            # TODO: Remove output.
             job = cron.new(command=THIS_FILE + " next_cron")
             job.set_comment(CRONTAB_COMMENT)
             job.env["DISPLAY"] = os.getenv("DISPLAY")
