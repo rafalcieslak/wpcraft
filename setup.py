@@ -2,10 +2,10 @@ from setuptools import setup, find_packages
 
 setup(
     name='wpcraft',
-    version='1.0.1',
+    version='1.0.2',
     description='A CLI for fetching wallpapers from WallpapersCraft',
 
-    url='',
+    url='https://github.com/rafalcieslak/wpcraft',
     author='Rafał Cieślak',
     author_email='rafalcieslak256@gmail.com',
 
