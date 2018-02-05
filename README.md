@@ -7,8 +7,7 @@ Wallpapers can be marked as "liked", you can instruct `wpcraft` to only pick wal
 
 You can also configure `wpcraft` to automatically switch wallpapers e.g. every 6 hours.
 
-Published under the terms of the GNU General Public License version 3, see full text in LICENSE.txt.
-(c) Rafał Cieślak 2017-2018
+Created by Rafał Cieślak (2017-2018) and published under the terms of the GNU General Public License version 3, see full text in LICENSE.txt.
 
 Installation
 ===
