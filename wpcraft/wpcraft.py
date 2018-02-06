@@ -29,10 +29,6 @@ DEFAULT_CONFIG: Dict[str, str] = {
 CRONTAB_COMMENT = 'wpcraft_automatically_generated'
 
 THIS_FILE = os.path.realpath(__file__)
-COMMAND = THIS_FILE
-for path in sys.path:
-    if THIS_FILE.startswith(path):
-        COMMAND = "wpcraft"
 
 
 @contextmanager
@@ -370,7 +366,7 @@ class WPCraft:
     def cmd_auto_hours(self, args) -> None:
         with user_crontab() as cron:
             cron.remove_all(comment=CRONTAB_COMMENT)
-            job = cron.new(command=COMMAND + " next_cron")
+            job = cron.new(command="python3 " + THIS_FILE + " next_cron")
             job.set_comment(CRONTAB_COMMENT)
             job.env["DISPLAY"] = os.getenv("DISPLAY")
             job.every(args.hours).hours()
@@ -379,7 +375,7 @@ class WPCraft:
     def cmd_auto_minutes(self, args) -> None:
         with user_crontab() as cron:
             cron.remove_all(comment=CRONTAB_COMMENT)
-            job = cron.new(command=COMMAND + " next_cron")
+            job = cron.new(command="python3 " + THIS_FILE + " next_cron")
             job.set_comment(CRONTAB_COMMENT)
             job.env["DISPLAY"] = os.getenv("DISPLAY")
             job.every(args.minutes).minutes()
