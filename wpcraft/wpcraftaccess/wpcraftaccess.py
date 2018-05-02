@@ -41,7 +41,7 @@ def get_wpids(scope: WPScope) -> List[WPID]:
         wallpapers = soup.find_all('div', class_='wallpapers')
         if len(wallpapers) == 0:  # graceful 404
             return []
-        wallpapers = wallpapers[0].find_all('div', class_='wallpaper_pre')
+        wallpapers = wallpapers[0].find_all('li', class_='wallpapers__item')
 
         result = []
         for w in wallpapers:
@@ -79,7 +79,7 @@ def get_wpdata(wpid: WPID) -> Optional[WPData]:
         return None
 
     soup = BeautifulSoup(page.content, 'html.parser')
-    div_tags = soup.find_all('div', class_='wb_tags')
+    div_tags = soup.find_all('div', class_='wallpaper__tags')
     tags: List[str]
     if len(div_tags) == 0:
         tags = []
@@ -101,11 +101,11 @@ def get_npages(scope: WPScope) -> int:
         return 0
 
     soup = BeautifulSoup(page.content, 'html.parser')
-    pages_div = soup.find_all('div', class_='pages')
-    if len(pages_div) == 0:
+    pages_ul = soup.find_all('ul', class_='pager__list')
+    if len(pages_ul) == 0:
         return 1
 
-    page_a = pages_div[0].find_all('a', class_='page_select')
+    page_a = pages_ul[0].find_all('a', class_='pager__link')
     if len(page_a) == 0:
         return 1
 
@@ -121,9 +121,8 @@ def get_image_url(id: WPID, resolution: str) -> Optional[str]:
         return None
 
     soup = BeautifulSoup(page.content, 'html.parser')
-    divs = soup.find_all('div', id='downloads_big')
-    if len(divs) is 0:
+    imgs = soup.find_all('img', class_='wallpaper__image')
+    if len(imgs) is 0:
         return None
-    div_big = divs[0]
-    src = div_big.find_all('img')[0]['src']
+    src = imgs[0]['src']
     return "https://wallpaperscraft.com/image/{}".format(src.split('/')[-1])

@@ -13,8 +13,8 @@ from typing import Dict, Any, Optional, List, Set
 
 from crontab import CronTab
 
-from .wpcraftaccess import wpcraftaccess as wpa
-from .utils import utils
+from wpcraft.wpcraftaccess import wpcraftaccess as wpa
+from wpcraft.utils import utils
 
 CONFIG_FILE_PATH = (os.getenv("WPCRAFT_CONFIG") or
                     "~/.local/share/wpcraft/config.yml")
