@@ -109,7 +109,7 @@ def get_npages(scope: WPScope) -> int:
     if len(page_a) == 0:
         return 1
 
-    return int(page_a[-1].get_text())
+    return int(page_a[-1]['href'].split('/')[-1][4:])
 
 
 # TODO: Maybe resolution deserves its own type

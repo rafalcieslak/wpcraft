@@ -38,10 +38,14 @@ def data_in_json_file(path: str, default: Dict[str, Any]):
     if not os.path.exists(fullpath):
         data = default.copy()
     else:
-        try:
-            data = json.load(open(fullpath, 'r'))
-        except json.decoder.JSONDecodeError:
-            data = default.copy()
+        if os.path.exists(fullpath):
+            try:
+                data = json.load(open(fullpath, 'r'))
+            except json.decoder.JSONDecodeError:
+                data = default.copy()
+        else:
+            os.makedirs(os.path.dirname(fullpath))
+            data = default.copy
 
     yield data
 
@@ -67,7 +71,11 @@ class WPCraft:
         # Load config
         if not os.path.exists(self.config_path):
             self.config = DEFAULT_CONFIG
-        data = json.load(open(self.config_path, 'r'))
+        if os.path.exists(self.config_path):
+            data = json.load(open(self.config_path, 'r'))
+        else:
+            os.makedirs(os.path.dirname(self.config_path))
+            data = {}
         if not data:
             data = DEFAULT_CONFIG
         self.config = data
@@ -76,11 +84,12 @@ class WPCraft:
         state_file = self.config_get_filesystem_path("state-path")
         if not os.path.exists(state_file):
             self.state = {}
-        try:
-            self.state = json.load(open(state_file, 'r'))
-        except json.decoder.JSONDecodeError:
-            print("State file is broken, restoring default")
-            self.state = {}
+        else:
+            try:
+                self.state = json.load(open(state_file, 'r'))
+            except json.decoder.JSONDecodeError:
+                print("State file is broken, restoring default")
+                self.state = {}
 
     def save(self) -> None:
         # Save state
