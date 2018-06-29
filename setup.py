@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='wpcraft',
-    version='1.0.7',
+    version='1.0.8',
     description='A CLI for fetching wallpapers from WallpapersCraft',
 
     url='https://github.com/rafalcieslak/wpcraft',
