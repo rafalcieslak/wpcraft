@@ -45,7 +45,7 @@ def data_in_json_file(path: str, default: Dict[str, Any]):
                 data = default.copy()
         else:
             os.makedirs(os.path.dirname(fullpath))
-            data = default.copy
+            data = default.copy()
 
     yield data
 
@@ -150,12 +150,13 @@ class WPCraft:
         with open(target, 'wb') as out_file:
             shutil.copyfileobj(image.raw, out_file)
 
-    def switch_to_wallpaper(self, id: wpa.WPID, dry_run: bool=False) -> None:
+    # Returns true iff the wallpaper was actually changed
+    def switch_to_wallpaper(self, id: wpa.WPID, dry_run: bool=False) -> bool:
         # TODO: Handle missing resolutions
         image_url = wpa.get_image_url(id, self.get_resolution())
         if not image_url:
-            print("Wallpaper {} not found.".format(id))
-            return
+            print("Wallpaper {} not found in requested resolution.".format(id))
+            return False
 
         print("Switching to wallpaper {}{}".format(
             (id), " (dry run)" if dry_run else ""))
@@ -164,16 +165,20 @@ class WPCraft:
         if not os.path.exists(target_file):
             self.download_image(image_url, target_file)
 
-        if not dry_run:
-            # TODO: Detect desktop environment
-            utils.set_wallpaper_gnome3(target_file)
+        if dry_run:
+            return True  # Pretend the change was performed.
 
-            # Record the change in state file
-            current = self.state.get("current", None)
-            history = self.state.get("history", [])
-            if current:
-                self.state["history"] = [current] + history
-            self.state["current"] = str(id)
+        # TODO: Detect desktop environment
+        utils.set_wallpaper_gnome3(target_file)
+
+        # Record the change in state file
+        current = self.state.get("current", None)
+        history = self.state.get("history", [])
+        if current:
+            self.state["history"] = [current] + history
+        self.state["current"] = str(id)
+
+        return True
 
     def get_current_scope_name(self) -> str:
         scope = self.config_get("scope").split("/", 1)
@@ -213,8 +218,10 @@ class WPCraft:
             return
         # TODO: Maybe avoid selecting the same wp in a row if there are not too
         # many to choose from.
-        newwpid = random.choice(wpids)
-        self.switch_to_wallpaper(newwpid, dry_run=args.dry_run)
+        changed = False
+        while not changed:
+            newwpid = random.choice(wpids)
+            changed = self.switch_to_wallpaper(newwpid, dry_run=args.dry_run)
 
     def cmd_next_cron(self, args) -> None:
         # cron rules use this command instead of next. This is because some
