@@ -20,12 +20,13 @@ CONFIG_FILE_PATH = (os.getenv("WPCRAFT_CONFIG") or
                     "~/.local/share/wpcraft/config.json")
 
 # TODO: These dictionaries could be TypedDicts instead.
-DEFAULT_CONFIG: Dict[str, str] = {
+DEFAULT_CONFIG: Dict[str, Any] = {
     "state-path": "~/.local/share/wpcraft/state.json",
     "preferences-path": "~/.local/share/wpcraft/preferences.json",
     "cache-dir": "~/.cache/wpcraft",
     "scope": "catalog/city",
-    "resolution": "default"
+    "resolution": "default",
+    "history-size": 20
 }
 DEFAULT_STATE: Dict[str, Any] = {}
 DEFAULT_PREFERENCES: Dict[str, Any] = {
@@ -107,7 +108,7 @@ class WPCraft:
         # Save state
         state_file = self.config_get_filesystem_path("state-path")
         os.makedirs(os.path.dirname(state_file), exist_ok=True)
-        json.dump(self.state, open(state_file, 'w'))
+        json.dump(self.state, open(state_file, 'w'), indent=4)
 
         # Save preferences
         preferences_file = self.config_get_filesystem_path("preferences-path")
@@ -198,7 +199,8 @@ class WPCraft:
         current = self.get_current()
         history = self.state.get("history", [])
         if current:
-            self.state["history"] = [current] + history
+            history_size = self.config_get('history-size')
+            self.state["history"] = ([current] + history)[:history_size]
         self.state["current"] = str(id)
 
         return True
@@ -358,6 +360,13 @@ class WPCraft:
         else:
             print("\n".join(disliked))
 
+    def cmd_show_history(self, args) -> None:
+        history = self.state.get("history", [])
+        if len(history) is 0:
+            print("History is empty")
+        else:
+            print("\n".join(history))
+
     def cmd_like(self, args) -> None:
         wpid = self.get_current()
 
@@ -505,6 +514,10 @@ def main() -> None:
     parser_show_disliked = show_subparsers.add_parser(
         'disliked', help="Show the list of liked wallpapers.")
     parser_show_disliked.set_defaults(func=WPCraft.cmd_show_disliked)
+
+    parser_show_history = show_subparsers.add_parser(
+        'history', help="Show the history of previously used wallpapers.")
+    parser_show_history.set_defaults(func=WPCraft.cmd_show_history)
 
     parser_auto = subparsers.add_parser(
         'auto', help="Automatically switch wallpapers every X hours/minutes.")
