@@ -1,7 +1,7 @@
 import os
 import subprocess
 
-from typing import Tuple
+from wpcraft.types import Resolution
 
 
 def set_wallpaper_gnome3(path) -> None:
@@ -10,14 +10,15 @@ def set_wallpaper_gnome3(path) -> None:
     os.system(command)
 
 
-def get_screen_resolution() -> Tuple[int, int]:
+def get_screen_resolution() -> Resolution:
     # There are various ways to query screen resolution, but most of them
     # require a specific tool to be available on the target system.
 
     # First, try pygtk.
     try:
         import gtk
-        return gtk.gdk.screen_width(), gtk.gdk.screen_height()
+        return Resolution(w=gtk.gdk.screen_width(),
+                          h=gtk.gdk.screen_height())
     except (ImportError, ModuleNotFoundError):
         pass
 
@@ -33,7 +34,7 @@ def get_screen_resolution() -> Tuple[int, int]:
         resolution = resolution_lines[0].split()[0]
         w, h = resolution.split('x', 1)
 
-        return int(w), int(h)
+        return Resolution(int(w), int(h))
     except FileNotFoundError:
         pass
 

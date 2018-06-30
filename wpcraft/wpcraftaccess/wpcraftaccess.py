@@ -4,7 +4,7 @@ import concurrent.futures
 from bs4 import BeautifulSoup
 from typing import List, Optional
 
-from wpcraft.types import WPScope, WPData, WPID
+from wpcraft.types import WPScope, WPData, WPID, Resolution
 
 BASE_URL = "https://wallpaperscraft.com"
 
@@ -107,9 +107,9 @@ def get_npages(scope: WPScope) -> int:
 
 
 # TODO: Maybe resolution deserves its own type
-def get_image_url(id: WPID, resolution: str) -> Optional[str]:
-    download_page_url = "https://wallpaperscraft.com/download/{}/{}".format(
-        id, resolution)
+def get_image_url(id: WPID, resolution: Resolution) -> Optional[str]:
+    download_page_url = "https://wallpaperscraft.com/download/{}/{}x{}".format(
+        id, resolution.w, resolution.h)
     page = s.get(download_page_url)
     if page.status_code is not 200:
         return None

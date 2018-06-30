@@ -15,7 +15,7 @@ from crontab import CronTab
 
 from wpcraft.wpcraftaccess import wpcraftaccess as wpa
 from wpcraft.utils import utils
-from wpcraft.types import WPScope, WPID, WPData
+from wpcraft.types import WPScope, WPID, WPData, Resolution
 
 CONFIG_FILE_PATH = (os.getenv("WPCRAFT_CONFIG") or
                     "~/.local/share/wpcraft/config.json")
@@ -150,12 +150,12 @@ class WPCraft:
             data['ids'] = wpa.get_wpids(scope)
             return data['ids']
 
-    def get_resolution(self) -> str:
+    def get_resolution(self) -> Resolution:
         resolution = self.config_get("resolution")
         if resolution == "default":
-            w, h = utils.get_screen_resolution()
-            return '{}x{}'.format(w, h)
-        return resolution
+            return utils.get_screen_resolution()
+        w, h = resolution.split('x')[0:2]
+        return Resolution(w, h)
 
     def get_wallpaper_cache_path(self, id: WPID, image_url: str) -> str:
         return "{}/{}.{}".format(
@@ -177,10 +177,10 @@ class WPCraft:
     # Returns true iff the wallpaper was actually changed
     def switch_to_wallpaper(self, id: WPID, dry_run: bool=False) -> bool:
         resolution = self.get_resolution()
-        image_url = wpa.get_image_url(id, self.get_resolution())
+        image_url = wpa.get_image_url(id, resolution)
         if not image_url:
-            print("Wallpaper {} not found in requested resolution ({}).".
-                  format(id, resolution))
+            print("Wallpaper {} not found in requested resolution ({}x{}).".
+                  format(id, resolution.w, resolution.h))
             # TODO: Search for other feasible resolutions.
             return False
 
@@ -198,12 +198,13 @@ class WPCraft:
         utils.set_wallpaper_gnome3(target_file)
 
         # Record the change in state file
-        current = self.get_current()
+        previous = self.get_current()
         history = self.state.get("history", [])
-        if current:
+        if previous:
             history_size = self.config_get('history-size')
-            self.state["history"] = ([current] + history)[:history_size]
+            self.state["history"] = ([previous] + history)[:history_size]
         self.state["current"] = str(id)
+        self.state["current-url"] = image_url
 
         return True
 
@@ -292,7 +293,7 @@ class WPCraft:
                 # TODO: Check if this wallpaper matches system config.
                 print("Tags: {}".format(', '.join(wpdata.tags)))
                 print("Image URL: {}".format(
-                    wpa.get_image_url(wpid, self.get_resolution())))
+                    self.state.get('current-url', "(unknown)")))
 
         wpids = self.get_wpids()
         print("Using images {}, {} wallpapers available.".format(
