@@ -17,13 +17,20 @@ from wpcraft.wpcraftaccess import wpcraftaccess as wpa
 from wpcraft.utils import utils
 
 CONFIG_FILE_PATH = (os.getenv("WPCRAFT_CONFIG") or
-                    "~/.local/share/wpcraft/config.yml")
+                    "~/.local/share/wpcraft/config.json")
 
+# TODO: These dictionaries could be TypedDicts instead.
 DEFAULT_CONFIG: Dict[str, str] = {
     "state-path": "~/.local/share/wpcraft/state.json",
+    "preferences-path": "~/.local/share/wpcraft/preferences.json",
     "cache-dir": "~/.cache/wpcraft",
     "scope": "catalog/city",
     "resolution": "default"
+}
+DEFAULT_STATE: Dict[str, Any] = {}
+DEFAULT_PREFERENCES: Dict[str, Any] = {
+    "liked": [],
+    "disliked": []
 }
 
 CRONTAB_COMMENT = 'wpcraft_automatically_generated'
@@ -61,41 +68,51 @@ def user_crontab():
 
 
 class WPCraft:
-    config_path: str
-    config: Dict[str, str]
-    state: Dict[str, Any]
-
     def __init__(self, config_path: str) -> None:
         self.config_path = os.path.expanduser(config_path)
 
         # Load config
-        if not os.path.exists(self.config_path):
+        try:
+            self.config = json.load(open(self.config_path, 'r'))
+        except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
+            print("Config file is missing or corrupted, using default.")
             self.config = DEFAULT_CONFIG
-        if os.path.exists(self.config_path):
-            data = json.load(open(self.config_path, 'r'))
-        else:
-            os.makedirs(os.path.dirname(self.config_path))
-            data = {}
-        if not data:
-            data = DEFAULT_CONFIG
-        self.config = data
 
         # Load state
-        state_file = self.config_get_filesystem_path("state-path")
-        if not os.path.exists(state_file):
-            self.state = {}
-        else:
-            try:
-                self.state = json.load(open(state_file, 'r'))
-            except json.decoder.JSONDecodeError:
-                print("State file is broken, restoring default")
-                self.state = {}
+        state_file_path = self.config_get_filesystem_path("state-path")
+        try:
+            self.state = json.load(open(state_file_path, 'r'))
+        except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
+            print("State file is missing or corrupted, using default.")
+            self.state = DEFAULT_STATE
+
+        preferences_file_path = self.config_get_filesystem_path("preferences-path")
+        try:
+            self.preferences = json.load(open(preferences_file_path, 'r'))
+        except (FileNotFoundError, json.decoder.JSONDecodeError) as e:
+            print("Preferences file is missing or corrupted, using default.")
+            self.preferences = DEFAULT_PREFERENCES
 
     def save(self) -> None:
+        # If the state contains preferences, move them to the preferences
+        # file. This is to support legacy configs where preferences were
+        # stored in the state file.
+        if 'liked' in self.state:
+            self.preferences['liked'].extend(self.state['liked'])
+            del self.state['liked']
+        if 'disliked' in self.state:
+            self.preferences['disliked'].extend(self.state['disliked'])
+            del self.state['disliked']
+
         # Save state
         state_file = self.config_get_filesystem_path("state-path")
         os.makedirs(os.path.dirname(state_file), exist_ok=True)
         json.dump(self.state, open(state_file, 'w'))
+
+        # Save preferences
+        preferences_file = self.config_get_filesystem_path("preferences-path")
+        os.makedirs(os.path.dirname(preferences_file), exist_ok=True)
+        json.dump(self.preferences, open(preferences_file, 'w'), indent=4)
 
         # Save config
         os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
@@ -118,9 +135,9 @@ class WPCraft:
         if scope is None:
             scope = wpa.WPScope(self.config_get("scope"))
         if scope == "liked":
-            return self.state.get("liked", [])
+            return self.preferences.get("liked", [])
         if scope == "disliked":
-            return self.state.get("disliked", [])
+            return self.preferences.get("disliked", [])
         cache_dir = self.config_get_filesystem_path("cache-dir")
         path = os.path.join(cache_dir, "by_scope", str(scope) + ".json")
         with data_in_json_file(path, {}) as data:
@@ -150,12 +167,18 @@ class WPCraft:
         with open(target, 'wb') as out_file:
             shutil.copyfileobj(image.raw, out_file)
 
+    def get_current(self) -> wpa.WPID:
+        # TODO: Maybe we could avoid storing the wallpaper name in the
+        # state file and fetch it from DE config instead?
+        return self.state.get("current", None)
+
     # Returns true iff the wallpaper was actually changed
     def switch_to_wallpaper(self, id: wpa.WPID, dry_run: bool=False) -> bool:
         # TODO: Handle missing resolutions
+        resolution = self.get_resolution()
         image_url = wpa.get_image_url(id, self.get_resolution())
         if not image_url:
-            print("Wallpaper {} not found in requested resolution.".format(id))
+            print("Wallpaper {} not found in requested resolution ({}).".format(id, resolution))
             return False
 
         print("Switching to wallpaper {}{}".format(
@@ -172,7 +195,7 @@ class WPCraft:
         utils.set_wallpaper_gnome3(target_file)
 
         # Record the change in state file
-        current = self.state.get("current", None)
+        current = self.get_current()
         history = self.state.get("history", [])
         if current:
             self.state["history"] = [current] + history
@@ -192,18 +215,18 @@ class WPCraft:
             param=(scope[1] if len(scope) >= 2 else None))
 
     def is_liked(self, wpid: wpa.WPID) -> bool:
-        return wpid in self.state.get("liked", [])
+        return wpid in self.preferences.get("liked", [])
 
     def is_disliked(self, wpid: wpa.WPID) -> bool:
-        return wpid in self.state.get("disliked", [])
+        return wpid in self.preferences.get("disliked", [])
 
     def mark(self, wpid: wpa.WPID, set_name: str, val: bool=True) -> None:
-        wpset: Set[wpa.WPID] = set(self.state.get(set_name, []))
+        wpset: Set[wpa.WPID] = set(self.preferences.get(set_name, []))
         if val:
             wpset.add(wpid)
         elif not val and wpid in wpset:
             wpset.remove(wpid)
-        self.state[set_name] = list(wpset)
+        self.preferences[set_name] = list(wpset)
 
     def cmd_next(self, args) -> None:
         # Increment counter
@@ -252,7 +275,7 @@ class WPCraft:
         self.cmd_next(args)
 
     def cmd_status(self, args) -> None:
-        wpid = self.state.get("current", None)
+        wpid = self.get_current()
         print("Current wallpaper: {}".format(wpid))
         if wpid is not None:
             if self.is_liked(wpid):
@@ -322,21 +345,21 @@ class WPCraft:
         self.switch_to_wallpaper(args.wallpaper)
 
     def cmd_show_liked(self, args) -> None:
-        liked = self.state.get("liked", [])
+        liked = self.preferences.get("liked", [])
         if len(liked) is 0:
             print("No liked wallpapers")
         else:
             print("\n".join(liked))
 
     def cmd_show_disliked(self, args) -> None:
-        disliked = self.state.get("disliked", [])
+        disliked = self.preferences.get("disliked", [])
         if len(disliked) is 0:
             print("No disliked wallpapers")
         else:
             print("\n".join(disliked))
 
     def cmd_like(self, args) -> None:
-        wpid = self.state.get("current", None)
+        wpid = self.get_current()
 
         if self.is_liked(wpid):
             print("Current wallpaper is already marked as liked.")
@@ -350,7 +373,7 @@ class WPCraft:
         print("Marked current wallpaper as liked.")
 
     def cmd_dislike(self, args) -> None:
-        wpid = self.state.get("current", None)
+        wpid = self.get_current()
 
         if self.is_disliked(wpid):
             print("Wallpaper is already marked as disliked.")
@@ -367,7 +390,7 @@ class WPCraft:
             args.program))
 
     def cmd_unlike(self, args) -> None:
-        wpid = self.state.get("current", None)
+        wpid = self.get_current()
         self.mark(wpid, "liked", False)
         self.mark(wpid, "disliked", False)
         print("Removed like/dislake mark for current wallpaper.")
