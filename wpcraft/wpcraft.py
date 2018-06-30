@@ -15,6 +15,7 @@ from crontab import CronTab
 
 from wpcraft.wpcraftaccess import wpcraftaccess as wpa
 from wpcraft.utils import utils
+from wpcraft.types import WPScope, WPID, WPData
 
 CONFIG_FILE_PATH = (os.getenv("WPCRAFT_CONFIG") or
                     "~/.local/share/wpcraft/config.json")
@@ -127,14 +128,14 @@ class WPCraft:
     def config_get_filesystem_path(self, path: str):
         return os.path.abspath(os.path.expanduser(self.config_get(path)))
 
-    def get_wpdata(self, id: wpa.WPID) -> Optional[wpa.WPData]:
+    def get_wpdata(self, id: WPID) -> Optional[WPData]:
         # TODO: Maybe cache wpdata, or is it unnecessary?
         return wpa.get_wpdata(id)
 
-    def get_wpids(self, scope: wpa.WPScope=None,
-                  clear_cache=False) -> List[wpa.WPID]:
+    def get_wpids(self, scope: WPScope=None,
+                  clear_cache=False) -> List[WPID]:
         if scope is None:
-            scope = wpa.WPScope(self.config_get("scope"))
+            scope = WPScope(self.config_get("scope"))
         if scope == "liked":
             return self.preferences.get("liked", [])
         if scope == "disliked":
@@ -156,7 +157,7 @@ class WPCraft:
             return '{}x{}'.format(w, h)
         return resolution
 
-    def get_wallpaper_cache_path(self, id: wpa.WPID, image_url: str) -> str:
+    def get_wallpaper_cache_path(self, id: WPID, image_url: str) -> str:
         return "{}/{}.{}".format(
             self.config_get_filesystem_path("cache-dir"),
             id, image_url.split('.')[-1])
@@ -168,18 +169,19 @@ class WPCraft:
         with open(target, 'wb') as out_file:
             shutil.copyfileobj(image.raw, out_file)
 
-    def get_current(self) -> wpa.WPID:
+    def get_current(self) -> WPID:
         # TODO: Maybe we could avoid storing the wallpaper name in the
         # state file and fetch it from DE config instead?
         return self.state.get("current", None)
 
     # Returns true iff the wallpaper was actually changed
-    def switch_to_wallpaper(self, id: wpa.WPID, dry_run: bool=False) -> bool:
-        # TODO: Handle missing resolutions
+    def switch_to_wallpaper(self, id: WPID, dry_run: bool=False) -> bool:
         resolution = self.get_resolution()
         image_url = wpa.get_image_url(id, self.get_resolution())
         if not image_url:
-            print("Wallpaper {} not found in requested resolution ({}).".format(id, resolution))
+            print("Wallpaper {} not found in requested resolution ({}).".
+                  format(id, resolution))
+            # TODO: Search for other feasible resolutions.
             return False
 
         print("Switching to wallpaper {}{}".format(
@@ -216,14 +218,14 @@ class WPCraft:
         }[scope[0]].format(
             param=(scope[1] if len(scope) >= 2 else None))
 
-    def is_liked(self, wpid: wpa.WPID) -> bool:
+    def is_liked(self, wpid: WPID) -> bool:
         return wpid in self.preferences.get("liked", [])
 
-    def is_disliked(self, wpid: wpa.WPID) -> bool:
+    def is_disliked(self, wpid: WPID) -> bool:
         return wpid in self.preferences.get("disliked", [])
 
-    def mark(self, wpid: wpa.WPID, set_name: str, val: bool=True) -> None:
-        wpset: Set[wpa.WPID] = set(self.preferences.get(set_name, []))
+    def mark(self, wpid: WPID, set_name: str, val: bool=True) -> None:
+        wpset: Set[WPID] = set(self.preferences.get(set_name, []))
         if val:
             wpset.add(wpid)
         elif not val and wpid in wpset:

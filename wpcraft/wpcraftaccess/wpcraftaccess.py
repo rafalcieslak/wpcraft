@@ -2,19 +2,13 @@ import time
 import requests
 import concurrent.futures
 from bs4 import BeautifulSoup
-from typing import NewType, NamedTuple, List, Optional
+from typing import List, Optional
+
+from wpcraft.types import WPScope, WPData, WPID
 
 BASE_URL = "https://wallpaperscraft.com"
 
 s = requests.Session()
-
-WPScope = NewType('WPScope', str)
-WPID = NewType('WPID', str)
-
-
-class WPData(NamedTuple):
-    id: WPID
-    tags: List[str]
 
 
 def get_scope_url(scope: WPScope) -> str:
