@@ -147,7 +147,7 @@ class WPCraft:
                 data.clear()
             if 'ids' in data:
                 return data['ids']
-            data['ids'] = wpa.get_wpids(scope)
+            data['ids'] = wpa.get_wpids(scope, self.get_resolution())
             return data['ids']
 
     def get_resolution(self) -> Resolution:
@@ -181,7 +181,6 @@ class WPCraft:
         if not image_url:
             print("Wallpaper {} not found in requested resolution ({}x{}).".
                   format(id, resolution.w, resolution.h))
-            # TODO: Search for other feasible resolutions.
             return False
 
         print("Switching to wallpaper {}{}".format(
