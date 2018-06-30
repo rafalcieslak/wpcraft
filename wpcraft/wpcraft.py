@@ -35,6 +35,11 @@ DEFAULT_PREFERENCES: Dict[str, Any] = {
     "disliked": []
 }
 
+SET_VOTES = {
+    'liked': 1,
+    'disliked': -1
+}
+
 CRONTAB_COMMENT = 'wpcraft_automatically_generated'
 
 THIS_FILE = os.path.realpath(__file__)
@@ -95,6 +100,14 @@ class WPCraft:
             print("Preferences file is missing or corrupted, using default.")
             self.preferences = DEFAULT_PREFERENCES
 
+        # Initialize tag votes, if they are missing from the preferences file.
+        if ('votes' not in self.preferences
+           or self.preferences['votes'] is None):
+            if (self.preferences.get("liked", [])
+               or self.preferences.get("disliked", [])):
+                print("Recomputing tag votes, please wait...")
+                self.recompute_all_tags()
+
     def save(self) -> None:
         # If the state contains preferences, move them to the preferences
         # file. This is to support legacy configs where preferences were
@@ -114,7 +127,8 @@ class WPCraft:
         # Save preferences
         preferences_file = self.config_get_filesystem_path("preferences-path")
         os.makedirs(os.path.dirname(preferences_file), exist_ok=True)
-        json.dump(self.preferences, open(preferences_file, 'w'), indent=4)
+        json.dump(self.preferences, open(preferences_file, 'w'), indent=4,
+                  sort_keys=True)
 
         # Save config
         os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
@@ -226,11 +240,40 @@ class WPCraft:
 
     def mark(self, wpid: WPID, set_name: str, val: bool=True) -> None:
         wpset: Set[WPID] = set(self.preferences.get(set_name, []))
-        if val:
+        if val and wpid not in wpset:
             wpset.add(wpid)
+            # Update tag votes
+            for t in self.get_tags(wpid):
+                self.vote_tag(t, SET_VOTES.get(set_name, 0))
         elif not val and wpid in wpset:
             wpset.remove(wpid)
+            # Update tag votes
+            for t in self.get_tags(wpid):
+                self.vote_tag(t, -1 * SET_VOTES.get(set_name, 0))
         self.preferences[set_name] = list(wpset)
+
+    def get_tags(self, wpid: WPID) -> List[str]:
+        wpdata = wpa.get_wpdata(wpid)
+        return wpdata.tags if wpdata else []
+
+    def vote_tag(self, tag: str, change: int, quiet: bool=False) -> None:
+        if change == 0:
+            return
+        if not quiet:
+            print("Vote on tag {}: {}".format(tag, change))
+        v = self.preferences['votes'].get(tag, 0)
+        self.preferences['votes'][tag] = v + change
+
+    def recompute_all_tags(self):
+        # This function disregards current tag votes and initializes them from
+        # liked and disliked sets.
+        self.preferences['votes'] = {}
+        for wpid in self.preferences.get("liked", []):
+            for t in self.get_tags(wpid):
+                self.vote_tag(t, SET_VOTES['liked'], quiet=True)
+        for wpid in self.preferences.get("disliked", []):
+            for t in self.get_tags(wpid):
+                self.vote_tag(t, SET_VOTES['disliked'], quiet=True)
 
     def cmd_next(self, args) -> None:
         # Increment counter
@@ -369,32 +412,44 @@ class WPCraft:
         else:
             print("\n".join(history))
 
-    def cmd_like(self, args) -> None:
-        wpid = self.get_current()
+    def cmd_show_tags(self, args) -> None:
+        TAGS_MAX = 15
+        print("You seem to like these tags the most:")
+        votes = self.preferences.get("votes", {})
+        result = sorted(votes.items(), key=lambda q: -q[1])
+        if len(result) is 0:
+            print("No tag preferences to display, mark more wallpapers as "
+                  "liked using `wpcraft like`.")
+        if len(result) > TAGS_MAX:
+            cutoff_v = result[TAGS_MAX][1]
+            result = [(t, v) for t, v in result if v >= cutoff_v]
 
-        if self.is_liked(wpid):
+        print("\n".join("{}: {}".format(t, v) for t, v in result))
+
+    def cmd_like(self, args) -> None:
+        current = self.get_current()
+
+        if self.is_liked(current):
             print("Current wallpaper is already marked as liked.")
             return
 
-        self.mark(wpid, "disliked", False)
-        self.mark(wpid, "liked", True)
+        self.mark(current, "disliked", False)
+        self.mark(current, "liked", True)
 
         # TODO: Vote on wallpaperscraft
-        # TODO: Update tag opinions
         print("Marked current wallpaper as liked.")
 
     def cmd_dislike(self, args) -> None:
-        wpid = self.get_current()
+        current = self.get_current()
 
-        if self.is_disliked(wpid):
+        if self.is_disliked(current):
             print("Wallpaper is already marked as disliked.")
             return
 
-        self.mark(wpid, "liked", False)
-        self.mark(wpid, "disliked", True)
+        self.mark(current, "liked", False)
+        self.mark(current, "disliked", True)
 
         # TODO: Vote on wallpaperscraft
-        # TODO: Update tag opinions
         print("Marked current wallpaper as disliked.")
 
         print("Use '{} next' to switch to a different wallpaper.".format(
@@ -404,7 +459,7 @@ class WPCraft:
         wpid = self.get_current()
         self.mark(wpid, "liked", False)
         self.mark(wpid, "disliked", False)
-        print("Removed like/dislake mark for current wallpaper.")
+        print("Removed like/dislike mark for current wallpaper.")
 
     def cmd_auto_disable(self, args) -> None:
         with user_crontab() as cron:
@@ -520,6 +575,10 @@ def main() -> None:
     parser_show_history = show_subparsers.add_parser(
         'history', help="Show the history of previously used wallpapers.")
     parser_show_history.set_defaults(func=WPCraft.cmd_show_history)
+
+    parser_show_tags = show_subparsers.add_parser(
+        'tags', help="Show summary of tags you liked with `wpcraft like`.")
+    parser_show_tags.set_defaults(func=WPCraft.cmd_show_tags)
 
     parser_auto = subparsers.add_parser(
         'auto', help="Automatically switch wallpapers every X hours/minutes.")

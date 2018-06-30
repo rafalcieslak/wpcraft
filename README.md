@@ -84,6 +84,29 @@ $ wpcraft show liked
 $ wpcraft show disliked
 ```
 
+Show your favorite tags (based on your likes/dislikes):
+
+```
+$ wpcraft show tags
+You seem to like these tags:
+city: 21
+skyscrapers: 17
+building: 12
+night: 10
+sky: 10
+buildings: 9
+bridge: 8
+new york: 8
+top view: 7
+usa: 6
+chicago: 5
+river: 5
+clouds: 4
+hdr: 4
+lights: 4
+metropolis: 4
+```
+
 Set a specific wallpaper by ID:
 
 ```
