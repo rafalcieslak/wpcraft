@@ -1,9 +1,14 @@
 from setuptools import setup, find_packages
 
+with open('README.md') as readme_file:
+    README = readme_file.read()
+
 setup(
     name='wpcraft',
     version='1.1.0',
     description='A CLI for fetching wallpapers from WallpapersCraft',
+    long_description=README,
+    long_description_content_type="text/markdown",
 
     url='https://github.com/rafalcieslak/wpcraft',
     author='Rafał Cieślak',
