@@ -1,4 +1,3 @@
 - Command to display a list of catalogs
 - Support for other desktop environments than just gnome3
-- Display author, source and license information, if available.
 - Allow filtering by user score.

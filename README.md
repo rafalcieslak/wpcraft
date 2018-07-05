@@ -127,11 +127,12 @@ $ wpcraft prev
 ```
 
 
-Configure `wpcraft` to automatically switch to "next" wallpaper every 5 minutes / every 12 hours (`wpcraft` uses cron):
+Configure `wpcraft` to automatically switch to "next" wallpaper every 5 minutes / every 12 hours / every 7 days (`wpcraft` uses cron):
 
 ```
 $ wpcraft auto minutes 5
 $ wpcraft auto hours 12
+$ wpcraft auto days 7
 ```
 
 Stop automatically switching wallpapers:

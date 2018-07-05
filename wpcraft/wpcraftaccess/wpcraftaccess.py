@@ -92,9 +92,22 @@ def get_wpdata(wpid: WPID) -> Optional[WPData]:
                 replace('backgrounds', '').strip()
                 for a in a_tags]
 
-    # TODO: Also pull tags from wallpaper title
+    author = license_ = source = None
+    div_authors = soup.find_all('div', class_='author__block')
+    if div_authors:
+        div_authors = div_authors[0]
+        arows = div_authors.find_all('div', class_="author__row")
+        for row in arows:
+            text = row.text.strip()
+            if text.startswith('Author: '):
+                author = text[8:].strip()
+            if text.startswith('License: '):
+                license_ = text[9:].strip()
+        sources = soup.find_all('a', class_="author__link")
+        if sources:
+            source = sources[0]['href']
 
-    return WPData(wpid, tags)
+    return WPData(wpid, tags, author, license_, source)
 
 
 def get_npages(scope: WPScope, resolution: Resolution) -> int:

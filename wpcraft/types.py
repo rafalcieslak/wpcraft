@@ -1,4 +1,4 @@
-from typing import NamedTuple, List, NewType, Tuple
+from typing import NamedTuple, List, NewType, Tuple, Optional
 
 WPScope = NewType('WPScope', str)
 WPID = NewType('WPID', str)
@@ -7,6 +7,9 @@ WPID = NewType('WPID', str)
 class WPData(NamedTuple):
     id: WPID
     tags: List[str]
+    author: Optional[str]
+    license: Optional[str]
+    source: Optional[str]
 
 
 class Resolution(NamedTuple):

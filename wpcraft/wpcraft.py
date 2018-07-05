@@ -3,9 +3,11 @@
 import os
 import sys
 import json
+import time
 import shutil
 import random
 import requests
+import datetime
 import argparse
 import subprocess
 from contextlib import contextmanager
@@ -218,6 +220,7 @@ class WPCraft:
             self.state["history"] = ([previous] + history)[:history_size]
         self.state["current"] = str(id)
         self.state["current-url"] = image_url
+        self.state["last-changed"] = time.time()
 
         return True
 
@@ -297,6 +300,38 @@ class WPCraft:
         # cron rules use this command instead of next. This is because some
         # extra variables need to be added to the environment.
 
+        # Determine whether the time is right to switch the wallpaper.
+        last_changed = datetime.datetime.utcfromtimestamp(
+            int(self.state.get('last-changed', 0)))
+        delta = datetime.datetime.utcnow() - last_changed
+
+        if 'auto' not in self.state:
+            return
+        n, per = self.state['auto'].split(' ')
+        n = int(n)
+        if per == 'minutes':
+            target_delta = datetime.timedelta(minutes=n)
+        elif per == 'hours':
+            target_delta = datetime.timedelta(hours=n)
+        elif per == 'days':
+            target_delta = datetime.timedelta(days=n)
+        else:
+            return
+
+        print("Time since last switch: {}".format(delta))
+        print("Configured time between automatic switches: {}".format(
+            target_delta))
+
+        # Account for the time it might have taken the last cron change to
+        # download and set the wallpaper. Otherwise we would fall for
+        # discretization error and switch wallpapers every n+1 minutes instead
+        # of n.
+        delta += datetime.timedelta(seconds=10)
+
+        if delta < target_delta:
+            print("Skipping, not enough time has elapsed since last switch.")
+            return
+
         # Find a PID of a process running inside desktop session
         pidlist = [int(s.strip()) for s in subprocess.check_output(
             ["ps", "-o", "pid=", "U", str(os.getuid())]
@@ -340,10 +375,22 @@ class WPCraft:
 
             wpdata = self.get_wpdata(wpid)
             if wpdata:
+                print('-'*32)
+
                 # TODO: Check if this wallpaper matches system config.
                 print("Tags: {}".format(', '.join(wpdata.tags)))
+
+                if wpdata.author:
+                    print("Author: {}".format(wpdata.author))
+                if wpdata.license:
+                    print("License: {}".format(wpdata.license))
+                if wpdata.source:
+                    print("Source link: {}".format(wpdata.source))
+
                 print("Image URL: {}".format(
                     self.state.get('current-url', "(unknown)")))
+
+            print("-"*32)
 
         wpids = self.get_wpids()
         print("Using images {}, {} wallpapers available.".format(
@@ -474,26 +521,25 @@ class WPCraft:
             cron.remove_all(comment=CRONTAB_COMMENT)
         self.state["auto"] = None
 
-    # TODO: Do not rely on cron timing. Instead, save the "last-changed"
-    # timestamp, and call cron every minute with a special command that
-    # switches wallpaper only if now-timestamp>threshold.
-    def cmd_auto_hours(self, args) -> None:
+    def cron_enable(self) -> None:
         with user_crontab() as cron:
             cron.remove_all(comment=CRONTAB_COMMENT)
             job = cron.new(command=CRON_COMMAND + " next_cron")
             job.set_comment(CRONTAB_COMMENT)
             job.env["DISPLAY"] = os.getenv("DISPLAY")
-            job.every(args.hours).hours()
-        self.state["auto"] = "{} hours".format(args.hours)
+            job.every(1).minutes()
 
     def cmd_auto_minutes(self, args) -> None:
-        with user_crontab() as cron:
-            cron.remove_all(comment=CRONTAB_COMMENT)
-            job = cron.new(command=CRON_COMMAND + " next_cron")
-            job.set_comment(CRONTAB_COMMENT)
-            job.env["DISPLAY"] = os.getenv("DISPLAY")
-            job.every(args.minutes).minutes()
         self.state["auto"] = "{} minutes".format(args.minutes)
+        self.cron_enable()
+
+    def cmd_auto_hours(self, args) -> None:
+        self.state["auto"] = "{} hours".format(args.hours)
+        self.cron_enable()
+
+    def cmd_auto_days(self, args) -> None:
+        self.state["auto"] = "{} days".format(args.days)
+        self.cron_enable()
 
 
 def main() -> None:
@@ -611,6 +657,11 @@ def main() -> None:
         help="Automatically switch to next wallpaper every N minutes.")
     parser_auto_minutes.set_defaults(func=WPCraft.cmd_auto_minutes)
     parser_auto_minutes.add_argument('minutes', metavar='N', type=int)
+
+    parser_auto_days = auto_subparsers.add_parser(
+        'days', help="Automatically switch to next wallpaper every N days.")
+    parser_auto_days.set_defaults(func=WPCraft.cmd_auto_days)
+    parser_auto_days.add_argument('days', metavar='N', type=int)
 
     args = parser.parse_args()
     args.program = sys.argv[0]
