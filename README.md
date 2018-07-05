@@ -113,6 +113,20 @@ Set a specific wallpaper by ID:
 $ wpcraft wallpaper architecture_city_view_from_above_buildings_river_118446
 ```
 
+Display wallpaper history:
+
+```
+$ wpcraft show history
+```
+
+
+Go back to the previous wallpaper:
+
+```
+$ wpcraft prev
+```
+
+
 Configure `wpcraft` to automatically switch to "next" wallpaper every 5 minutes / every 12 hours (`wpcraft` uses cron):
 
 ```

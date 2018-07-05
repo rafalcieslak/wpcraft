@@ -321,6 +321,14 @@ class WPCraft:
         # Continue as normal 'next'.
         self.cmd_next(args)
 
+    def cmd_prev(self, args) -> None:
+        history = self.state.get("history", [])
+        if len(history) is 0:
+            print("No previous wallpaper")
+            return
+        prev = WPID(history[0])
+        self.switch_to_wallpaper(prev, dry_run=args.dry_run)
+
     def cmd_status(self, args) -> None:
         wpid = self.get_current()
         print("Current wallpaper: {}".format(wpid))
@@ -506,8 +514,12 @@ def main() -> None:
         'next', help="Switch to the next wallpaper.")
     parser_next.set_defaults(func=WPCraft.cmd_next)
     parser_next_cron = subparsers.add_parser(
-        'next_cron', help=argparse.SUPPRESS)
+        'next_cron')
     parser_next_cron.set_defaults(func=WPCraft.cmd_next_cron)
+
+    parser_prev = subparsers.add_parser(
+        'prev', help="Go back to the previous wallpaper.")
+    parser_prev.set_defaults(func=WPCraft.cmd_prev)
 
     parser_update = subparsers.add_parser(
         'update', help="Refresh the list of available wallpapers.")
