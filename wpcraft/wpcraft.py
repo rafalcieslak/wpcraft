@@ -199,7 +199,7 @@ class WPCraft:
                   format(id, resolution.w, resolution.h))
             return False
 
-        print("Switching to wallpaper {}{}".format(
+        print("Switching to wallpaper: {}{}".format(
             (id), " (dry run)" if dry_run else ""))
 
         target_file = self.get_wallpaper_cache_path(id, image_url)
@@ -230,8 +230,8 @@ class WPCraft:
             "tag": "with tag '{param}'",
             "catalog": "from catalog '{param}'",
             "search": "in search results for '{param}'",
-            "liked": "marked as liked.",
-            "disliked": "marked as disliked.",
+            "liked": "marked as liked",
+            "disliked": "marked as disliked",
         }[scope[0]].format(
             param=(scope[1] if len(scope) >= 2 else None))
 
@@ -278,6 +278,30 @@ class WPCraft:
             for t in self.get_tags(wpid):
                 self.vote_tag(t, SET_VOTES['disliked'], quiet=True)
 
+    def show_details(self, wpid: WPID) -> None:
+        wpdata = self.get_wpdata(wpid)
+        if wpdata:
+            # TODO: Check if this wallpaper matches system config.
+            print("Tags: {}".format(', '.join(wpdata.tags)))
+
+            if wpdata.score:
+                print("User score: {}".format(wpdata.score))
+
+            if wpdata.author:
+                print("Author: {}".format(wpdata.author))
+            if wpdata.license:
+                print("License: {}".format(wpdata.license))
+            if wpdata.source:
+                print("Source link: {}".format(wpdata.source))
+
+            print("Image URL: {}".format(
+                self.state.get('current-url', "(unknown)")))
+
+            if self.is_liked(wpid):
+                print("You like this wallpaper.")
+            elif self.is_disliked(wpid):
+                print("You dislike this wallpaper.")
+
     def cmd_next(self, args) -> None:
         # Increment counter
         counter = self.state.get("counter", 0)
@@ -295,6 +319,9 @@ class WPCraft:
         while not changed:
             newwpid = random.choice(wpids)
             changed = self.switch_to_wallpaper(newwpid, dry_run=args.dry_run)
+
+        current = self.get_current()
+        self.show_details(current)
 
     def cmd_next_cron(self, args) -> None:
         # cron rules use this command instead of next. This is because some
@@ -367,32 +394,9 @@ class WPCraft:
     def cmd_status(self, args) -> None:
         wpid = self.get_current()
         print("Current wallpaper: {}".format(wpid))
+
         if wpid is not None:
-            if self.is_liked(wpid):
-                print("You like this wallpaper.")
-            elif self.is_disliked(wpid):
-                print("You dislike this wallpaper.")
-
-            wpdata = self.get_wpdata(wpid)
-            if wpdata:
-                print('-'*32)
-
-                # TODO: Check if this wallpaper matches system config.
-                print("Tags: {}".format(', '.join(wpdata.tags)))
-
-                if wpdata.score:
-                    print("User score: {}".format(wpdata.score))
-
-                if wpdata.author:
-                    print("Author: {}".format(wpdata.author))
-                if wpdata.license:
-                    print("License: {}".format(wpdata.license))
-                if wpdata.source:
-                    print("Source link: {}".format(wpdata.source))
-
-                print("Image URL: {}".format(
-                    self.state.get('current-url', "(unknown)")))
-
+            self.show_details(wpid)
             print("-"*32)
 
         wpids = self.get_wpids()
