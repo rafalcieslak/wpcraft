@@ -58,6 +58,12 @@ $ wpcraft use search ferrari
 Found 169 wallpapers in search results for 'ferrari'
 ```
 
+Configure `wpcraft` to only use wallpapers with user score at least 7.5:
+
+```
+$ wpcraft min_score 7.5
+```
+
 Mark a wallpaper as liked or disliked:
 
 ```

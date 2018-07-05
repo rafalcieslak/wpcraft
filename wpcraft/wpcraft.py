@@ -29,7 +29,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "cache-dir": "~/.cache/wpcraft",
     "scope": "catalog/city",
     "resolution": "default",
-    "history-size": 20
+    "history-size": 20,
+    "min-score": 0.0
 }
 DEFAULT_STATE: Dict[str, Any] = {}
 DEFAULT_PREFERENCES: Dict[str, Any] = {
@@ -157,14 +158,21 @@ class WPCraft:
         if scope == "disliked":
             return self.preferences.get("disliked", [])
         cache_dir = self.config_get_filesystem_path("cache-dir")
+        os.makedirs(cache_dir, exist_ok=True)
         path = os.path.join(cache_dir, "by_scope", str(scope) + ".json")
         with data_in_json_file(path, {}) as data:
             if clear_cache:
                 data.clear()
             if 'ids' in data:
                 return data['ids']
-            data['ids'] = wpa.get_wpids(scope, self.get_resolution())
+            min_score = self.config_get('min-score')
+            data['ids'] = wpa.get_wpids(
+                scope, self.get_resolution(), min_score)
             return data['ids']
+
+    def invalidate_scope_cache(self) -> None:
+        cache_dir = self.config_get_filesystem_path("cache-dir")
+        shutil.rmtree(os.path.join(cache_dir, "by_scope"))
 
     def get_resolution(self) -> Resolution:
         resolution = self.config_get("resolution")
@@ -398,8 +406,17 @@ class WPCraft:
             print("-"*32)
 
         wpids = self.get_wpids()
-        print("Using images {}, {} wallpapers available.".format(
-            self.get_current_scope_name(), len(wpids)))
+        scope = self.get_current_scope_name()
+        print("Using images {}.".format(scope))
+
+        filtered_scope = self.config_get("scope").split("/", 1)[0] in [
+            'catalog', 'tag', 'search']
+        min_score = self.config_get('min-score')
+        if min_score and filtered_scope:
+            print("Picking only wallpapers with user score at least {}".format(
+                min_score))
+
+        print("{} wallpapers match these criteria.".format(len(wpids)))
 
         if self.state.get("auto", None):
             print("Automatically switching every {}.".format(
@@ -547,6 +564,10 @@ class WPCraft:
         self.state["auto"] = "{} days".format(args.days)
         self.cron_enable()
 
+    def cmd_min_score(self, args) -> None:
+        self.config['min-score'] = args.min_score
+        self.invalidate_scope_cache()
+        self.cmd_update(args)
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -668,6 +689,13 @@ def main() -> None:
         'days', help="Automatically switch to next wallpaper every N days.")
     parser_auto_days.set_defaults(func=WPCraft.cmd_auto_days)
     parser_auto_days.add_argument('days', metavar='N', type=int)
+
+    parser_min_score = subparsers.add_parser(
+        'min_score', help="Ignore wallpapers with user score lower than X. "
+        "This helps in filtering out low-quality images. "
+        "Set to '0' (default) to disable filtering.")
+    parser_min_score.add_argument('min_score', metavar='X', type=float)
+    parser_min_score.set_defaults(func=WPCraft.cmd_min_score)
 
     args = parser.parse_args()
     args.program = sys.argv[0]

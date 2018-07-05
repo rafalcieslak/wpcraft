@@ -31,7 +31,8 @@ def get_scope_url(scope: WPScope,
 
 
 def get_wpids(scope: WPScope,
-              resolution: Resolution) -> List[WPID]:
+              resolution: Resolution,
+              min_score: Optional[float]=None) -> List[WPID]:
     N = get_npages(scope, resolution)
 
     def gather_results_from_page_n(n: int) -> List[WPID]:
@@ -50,7 +51,11 @@ def get_wpids(scope: WPScope,
         for w in wallpapers:
             href = w.find_all('a')[0]['href']
             identifier = href.split('/')[-2]
-            result.append(identifier)
+            score_s = w.find_all('span', class_="wallpapers__info-rating")[0]
+            score_t = score_s.text.strip()
+            score = float(score_t or 0)
+            if not min_score or (score >= min_score):
+                result.append(identifier)
         return result
 
     with concurrent.futures.ThreadPoolExecutor(50) as executor:
@@ -59,10 +64,13 @@ def get_wpids(scope: WPScope,
 
         # Wait for all requests to finish
         finished = 0
-        msg = "\rGathering wallpaper list for '%s': {:.0f}%%..." % scope
+        score_msg = (" (min_score: {})".format(min_score)
+                     if min_score else "")
+        msg = "\rGathering wallpaper list for '{}'{}: ".format(
+            scope, score_msg)
         while finished < N:
             finished = sum(f.done() for f in futures)
-            print(msg.format(100.0*finished/N), end='')
+            print((msg + "{:.0f}%...").format(100.0*finished/N), end='')
             time.sleep(0.1)
         print(msg.format(100))
 
