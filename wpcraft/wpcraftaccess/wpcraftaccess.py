@@ -107,7 +107,13 @@ def get_wpdata(wpid: WPID) -> Optional[WPData]:
         if sources:
             source = sources[0]['href']
 
-    return WPData(wpid, tags, author, license_, source)
+    score = 0.0
+    span_scores = soup.find_all('span', {
+        'class': lambda x: x and x.startswith('wallpaper-votes__rate')})
+    if span_scores:
+        score = float(span_scores[0].text)
+
+    return WPData(wpid, tags, score, author, license_, source)
 
 
 def get_npages(scope: WPScope, resolution: Resolution) -> int:

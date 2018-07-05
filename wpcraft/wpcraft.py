@@ -380,6 +380,9 @@ class WPCraft:
                 # TODO: Check if this wallpaper matches system config.
                 print("Tags: {}".format(', '.join(wpdata.tags)))
 
+                if wpdata.score:
+                    print("User score: {}".format(wpdata.score))
+
                 if wpdata.author:
                     print("Author: {}".format(wpdata.author))
                 if wpdata.license:

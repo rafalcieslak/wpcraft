@@ -7,6 +7,7 @@ WPID = NewType('WPID', str)
 class WPData(NamedTuple):
     id: WPID
     tags: List[str]
+    score: float
     author: Optional[str]
     license: Optional[str]
     source: Optional[str]
