@@ -452,6 +452,7 @@ class WPCraft:
 
     def cmd_wallpaper(self, args) -> None:
         self.switch_to_wallpaper(args.wallpaper)
+        self.show_details(self.get_current())
 
     def cmd_show_liked(self, args) -> None:
         liked = self.preferences.get("liked", [])

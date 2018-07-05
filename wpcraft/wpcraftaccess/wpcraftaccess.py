@@ -111,7 +111,8 @@ def get_wpdata(wpid: WPID) -> Optional[WPData]:
     span_scores = soup.find_all('span', {
         'class': lambda x: x and x.startswith('wallpaper-votes__rate')})
     if span_scores:
-        score = float(span_scores[0].text)
+        if span_scores[0].text:
+            score = float(span_scores[0].text)
 
     return WPData(wpid, tags, score, author, license_, source)
 
