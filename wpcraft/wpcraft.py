@@ -436,8 +436,8 @@ class WPCraft:
         self.mark(current, "disliked", False)
         self.mark(current, "liked", True)
 
-        # TODO: Vote on wallpaperscraft
         print("Marked current wallpaper as liked.")
+        wpa.vote(current, up=True)
 
     def cmd_dislike(self, args) -> None:
         current = self.get_current()
@@ -449,8 +449,8 @@ class WPCraft:
         self.mark(current, "liked", False)
         self.mark(current, "disliked", True)
 
-        # TODO: Vote on wallpaperscraft
         print("Marked current wallpaper as disliked.")
+        wpa.vote(current, up=False)
 
         print("Use '{} next' to switch to a different wallpaper.".format(
             args.program))

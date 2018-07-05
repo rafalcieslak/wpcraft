@@ -138,3 +138,19 @@ def get_image_url(id: WPID, resolution: Resolution) -> Optional[str]:
         return None
     src = imgs[0]['src']
     return "https://wallpaperscraft.com/image/{}".format(src.split('/')[-1])
+
+
+# If @up is true, you're voting UP. Otherwise you are voting DOWN.
+def vote(id: WPID, up: bool) -> None:
+    id_n = id.split('_')[-1]
+    vote_url = "https://wallpaperscraft.com/ajax/votes/vote.json?image_id={}"
+
+    data = b"vote=yes" if up else b"vote=no"
+
+    res = s.post(vote_url.format(id_n), data=data, headers={
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
+    })
+
+    if res.status_code is not 200:
+        # print("Failed to share your vote with wallpaperscraft.com")
+        pass  # Errors here do not matter much.
