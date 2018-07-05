@@ -259,11 +259,9 @@ class WPCraft:
         wpdata = wpa.get_wpdata(wpid)
         return wpdata.tags if wpdata else []
 
-    def vote_tag(self, tag: str, change: int, quiet: bool=False) -> None:
+    def vote_tag(self, tag: str, change: int) -> None:
         if change == 0:
             return
-        if not quiet:
-            print("Vote on tag {}: {}".format(tag, change))
         v = self.preferences['votes'].get(tag, 0)
         self.preferences['votes'][tag] = v + change
 
@@ -273,10 +271,10 @@ class WPCraft:
         self.preferences['votes'] = {}
         for wpid in self.preferences.get("liked", []):
             for t in self.get_tags(wpid):
-                self.vote_tag(t, SET_VOTES['liked'], quiet=True)
+                self.vote_tag(t, SET_VOTES['liked'])
         for wpid in self.preferences.get("disliked", []):
             for t in self.get_tags(wpid):
-                self.vote_tag(t, SET_VOTES['disliked'], quiet=True)
+                self.vote_tag(t, SET_VOTES['disliked'])
 
     def show_details(self, wpid: WPID) -> None:
         wpdata = self.get_wpdata(wpid)
