@@ -115,6 +115,10 @@ def get_wpdata(wpid: WPID) -> Optional[WPData]:
         if sources:
             source = sources[0]['href']
 
+    if license_ and (license_.startswith("No licence") or
+                     license_.startswith("No license")):
+        license_ = None
+
     score = 0.0
     span_scores = soup.find_all('span', {
         'class': lambda x: x and x.startswith('wallpaper-votes__rate')})
