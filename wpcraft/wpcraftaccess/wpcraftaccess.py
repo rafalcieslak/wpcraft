@@ -1,5 +1,7 @@
 import time
 import requests
+import threading
+import collections
 import concurrent.futures
 from bs4 import BeautifulSoup
 from typing import List, Optional
@@ -7,8 +9,33 @@ from typing import List, Optional
 from wpcraft.types import WPScope, WPData, WPID, Resolution
 
 BASE_URL = "https://wallpaperscraft.com"
+REQ_PER_SECOND_LIMIT = 0.2
 
 s = requests.Session()
+
+
+class RateLimiter(collections.Iterator):
+    """Iterator that yields a value at most once every 'interval' seconds."""
+    def __init__(self, interval):
+        self.lock = threading.Lock()
+        self.interval = interval
+        self.next_yield = 0
+
+    def __next__(self):
+        with self.lock:
+            t = time.monotonic()
+            if t < self.next_yield:
+                time.sleep(self.next_yield - t)
+                t = time.monotonic()
+            self.next_yield = t + self.interval
+
+
+wallpaperscraft_rate_limit = RateLimiter(REQ_PER_SECOND_LIMIT)
+
+
+def throttled_get(*args):
+    next(wallpaperscraft_rate_limit)
+    return s.get(*args)
 
 
 def get_scope_url(scope: WPScope,
@@ -37,7 +64,7 @@ def get_wpids(scope: WPScope,
 
     def gather_results_from_page_n(n: int) -> List[WPID]:
         page_url = get_scope_url(scope, resolution, n)
-        page = s.get(page_url)
+        page = throttled_get(page_url)
         if page.status_code is not 200:
             return []
 
@@ -85,7 +112,7 @@ def get_wpids(scope: WPScope,
 
 def get_wpdata(wpid: WPID) -> Optional[WPData]:
     wallpaper_page_url = BASE_URL + "/wallpaper/{}".format(wpid)
-    page = s.get(wallpaper_page_url)
+    page = throttled_get(wallpaper_page_url)
     if page.status_code is not 200:
         return None
 
@@ -131,7 +158,7 @@ def get_wpdata(wpid: WPID) -> Optional[WPData]:
 
 def get_npages(scope: WPScope, resolution: Resolution) -> int:
     page_url = get_scope_url(scope, resolution)
-    page = s.get(page_url)
+    page = throttled_get(page_url)
     if page.status_code is not 200:
         return 0
 
@@ -160,7 +187,7 @@ def get_npages(scope: WPScope, resolution: Resolution) -> int:
 def get_image_url(id: WPID, resolution: Resolution) -> Optional[str]:
     download_page_url = "https://wallpaperscraft.com/download/{}/{}x{}".format(
         id, resolution.w, resolution.h)
-    page = s.get(download_page_url)
+    page = throttled_get(download_page_url)
     if page.status_code is not 200:
         return None
 
