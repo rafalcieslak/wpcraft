@@ -5,7 +5,7 @@ with open('README.md') as readme_file:
 
 setup(
     name='wpcraft',
-    version='1.2.2',
+    version='1.2.3',
     description='A CLI for fetching wallpapers from WallpapersCraft',
     long_description=README,
     long_description_content_type="text/markdown",
