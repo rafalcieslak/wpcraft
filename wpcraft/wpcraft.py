@@ -329,6 +329,33 @@ class WPCraft:
         current = self.get_current()
         self.show_details(current)
 
+    def find_dbus_address(self) -> str:
+                # Find a PID of a process running inside desktop session
+        pidlist = [int(s.strip()) for s in subprocess.check_output(
+            ["ps", "-o", "pid=", "U", str(os.getuid())]
+        ).decode('ascii').splitlines() if s != '']
+
+        # Look for a process that has DBUS_SESSION_BUS_ADDRESS env var set.
+        KEY = "DBUS_SESSION_BUS_ADDRESS"
+        dbus_address = ""
+        for pid in pidlist:
+            try:
+                env = open('/proc/{}/environ'.format(pid)).read().split('\0')
+                cmd = open('/proc/{}/cmdline'.format(pid)).read().split('\0')
+            except (PermissionError, FileNotFoundError):
+                continue
+            values = [e[len(KEY) + 1:] for e in env if e.startswith(KEY)]
+            if len(values) > 0:
+                if 'gnome-session' in cmd:
+                    # Okay, we found gnome session. This is the preferred
+                    # result. Return immediately.
+                    print("gnome-session found.")
+                    return values[0]
+                # Save this result for later.
+                dbus_address = values[0]
+
+        return dbus_address
+
     def cmd_next_cron(self, args) -> None:
         # cron rules use this command instead of next. This is because some
         # extra variables need to be added to the environment.
@@ -338,7 +365,8 @@ class WPCraft:
             int(self.state.get('last-changed', 0)))
         delta = datetime.datetime.utcnow() - last_changed
 
-        if 'auto' not in self.state:
+        if 'auto' not in self.state or not self.state['auto']:
+            print("Auto mode is not enabled")
             return
         n, per = self.state['auto'].split(' ')
         n = int(n)
@@ -365,27 +393,11 @@ class WPCraft:
             print("Skipping, not enough time has elapsed since last switch.")
             return
 
-        # Find a PID of a process running inside desktop session
-        pidlist = [int(s.strip()) for s in subprocess.check_output(
-            ["ps", "-o", "pid=", "U", str(os.getuid())]
-        ).decode('ascii').splitlines() if s != '']
-
-        # Look for a process that has DBUS_SESSION_BUS_ADDRESS env var set.
-        KEY = "DBUS_SESSION_BUS_ADDRESS"
-        dbus_address = ""
-        for pid in pidlist:
-            try:
-                env = open('/proc/{}/environ'.format(pid)).read().split('\0')
-            except (PermissionError, FileNotFoundError):
-                continue
-            values = [e[len(KEY) + 1:] for e in env if e.startswith(KEY)]
-            if len(values) > 0:
-                dbus_address = values[0]
-                break
+        dbus_address = self.find_dbus_address()
 
         print("Using dbus address: " + dbus_address)
         # Now, let's copy that value for ourselves.
-        os.environ[KEY] = dbus_address
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = dbus_address
         # Continue as normal 'next'.
         self.cmd_next(args)
 
